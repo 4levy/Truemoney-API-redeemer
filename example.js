@@ -1,4 +1,4 @@
-fetch('http://localhost:3000/api/redeem', {
+fetch('http://lkaskdwasndw.vercel.app/api/redeem', {
     method: 'POST',
     headers: {
         'Content-Type': 'application/json'

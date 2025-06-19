@@ -1,6 +1,5 @@
 const axios = require("axios");
 const https = require("https");
-const { body, validationResult } = require("express-validator");
 
 const API_WALLET = async (voucherCode, mobileNumber) => {
   const voucherId = voucherCode.replace(
@@ -68,6 +67,9 @@ const API_WALLET = async (voucherCode, mobileNumber) => {
 
 // Validation rules
 const validateRequest = (body) => {
+  if (!body || typeof body !== "object") {
+    return "Invalid request body";
+  }
   if (!body.voucherCode) {
     return "Voucher code is required";
   }
@@ -88,53 +90,54 @@ const validateRequest = (body) => {
 };
 
 // Vercel serverless function handler
-module.exports = async (req, res) => {
+module.exports = async (request, response) => {
   // Set CORS headers
-  res.setHeader("Access-Control-Allow-Credentials", true);
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,POST");
-  res.setHeader(
+  response.setHeader("Access-Control-Allow-Credentials", true);
+  response.setHeader("Access-Control-Allow-Origin", "*");
+  response.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,POST");
+  response.setHeader(
     "Access-Control-Allow-Headers",
     "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
   );
 
-  // Handle OPTIONS request
-  if (req.method === "OPTIONS") {
-    res.status(200).end();
+  // Handle preflight request
+  if (request.method === "OPTIONS") {
+    response.status(200).end();
     return;
   }
 
   // Health check endpoint
-  if (req.method === "GET") {
-    return res.json({
+  if (request.method === "GET") {
+    return response.status(200).json({
       status: {
-        message: "Online",
-        code: "OK",
+        message: "API is running",
+        code: "SUCCESS",
       },
       timestamp: new Date().toISOString(),
     });
   }
 
-  // Handle POST request
-  if (req.method === "POST") {
-    const validationError = validateRequest(req.body);
+  // Handle POST request for voucher redemption
+  if (request.method === "POST") {
+    console.log("Received request body:", request.body);
+
+    const validationError = validateRequest(request.body);
     if (validationError) {
-      return res.status(400).json({
+      return response.status(400).json({
         status: {
-          message: "Validation failed",
+          message: validationError,
           code: "VALIDATION_ERROR",
         },
-        error: validationError,
       });
     }
 
     try {
-      const { voucherCode, mobileNumber } = req.body;
+      const { voucherCode, mobileNumber } = request.body;
       const result = await API_WALLET(voucherCode, mobileNumber);
-      return res.json(result);
+      return response.status(200).json(result);
     } catch (error) {
-      console.error("API Error", error);
-      return res.status(500).json({
+      console.error("API Error:", error);
+      return response.status(500).json({
         status: {
           message: "Internal server error",
           code: "INTERNAL_ERROR",
@@ -144,7 +147,7 @@ module.exports = async (req, res) => {
   }
 
   // Handle unsupported methods
-  return res.status(405).json({
+  return response.status(405).json({
     status: {
       message: "Method not allowed",
       code: "METHOD_NOT_ALLOWED",
