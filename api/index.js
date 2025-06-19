@@ -74,7 +74,6 @@ const API_WALLET = async (voucherCode, mobileNumber) => {
       };
     }
 
-    // Handle rate limiting or blocking
     if (response.status === 403 || response.status === 429) {
       console.warn("Rate limited or blocked. Retrying after delay...");
       await delay(5000); // 5 second delay
@@ -105,7 +104,6 @@ const API_WALLET = async (voucherCode, mobileNumber) => {
   }
 };
 
-// Validation function
 const validateRequest = (body) => {
   if (!body || typeof body !== "object") {
     return "Invalid request body";
@@ -129,7 +127,6 @@ const validateRequest = (body) => {
   return null;
 };
 
-// Vercel serverless function handler
 module.exports = async (req, res) => {
   // Set CORS headers
   res.setHeader("Access-Control-Allow-Credentials", true);
@@ -140,7 +137,6 @@ module.exports = async (req, res) => {
     "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
   );
 
-  // Handle preflight request
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
@@ -156,7 +152,6 @@ module.exports = async (req, res) => {
     });
   }
 
-  // Handle POST request for voucher redemption
   if (req.method === "POST") {
     const validationError = validateRequest(req.body);
     if (validationError) {
