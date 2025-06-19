@@ -65,7 +65,7 @@ const API_WALLET = async (voucherCode, mobileNumber) => {
   }
 };
 
-// Validation rules
+// Validation function
 const validateRequest = (body) => {
   if (!body || typeof body !== "object") {
     return "Invalid request body";
@@ -89,41 +89,35 @@ const validateRequest = (body) => {
   return null;
 };
 
-// Vercel serverless function handler
-module.exports = async (request, response) => {
-  // Set CORS headers
-  response.setHeader("Access-Control-Allow-Credentials", true);
-  response.setHeader("Access-Control-Allow-Origin", "*");
-  response.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,POST");
-  response.setHeader(
+module.exports = async (req, res) => {
+  res.setHeader("Access-Control-Allow-Credentials", true);
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,POST");
+  res.setHeader(
     "Access-Control-Allow-Headers",
     "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
   );
 
-  // Handle preflight request
-  if (request.method === "OPTIONS") {
-    response.status(200).end();
-    return;
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
   }
 
-  // Health check endpoint
-  if (request.method === "GET") {
-    return response.status(200).json({
+  if (req.method === "GET") {
+    return res.status(200).json({
       status: {
-        message: "API is running",
-        code: "SUCCESS",
+        message: "Online",
+        code: "OK",
       },
       timestamp: new Date().toISOString(),
     });
   }
 
-  // Handle POST request for voucher redemption
-  if (request.method === "POST") {
-    console.log("Received request body:", request.body);
+  if (req.method === "POST") {
+    console.log("Request body:", req.body);
 
-    const validationError = validateRequest(request.body);
+    const validationError = validateRequest(req.body);
     if (validationError) {
-      return response.status(400).json({
+      return res.status(400).json({
         status: {
           message: validationError,
           code: "VALIDATION_ERROR",
@@ -132,12 +126,12 @@ module.exports = async (request, response) => {
     }
 
     try {
-      const { voucherCode, mobileNumber } = request.body;
+      const { voucherCode, mobileNumber } = req.body;
       const result = await API_WALLET(voucherCode, mobileNumber);
-      return response.status(200).json(result);
+      return res.status(200).json(result);
     } catch (error) {
       console.error("API Error:", error);
-      return response.status(500).json({
+      return res.status(500).json({
         status: {
           message: "Internal server error",
           code: "INTERNAL_ERROR",
@@ -146,8 +140,7 @@ module.exports = async (request, response) => {
     }
   }
 
-  // Handle unsupported methods
-  return response.status(405).json({
+  return res.status(405).json({
     status: {
       message: "Method not allowed",
       code: "METHOD_NOT_ALLOWED",
