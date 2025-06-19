@@ -1,7 +1,6 @@
 const axios = require("axios");
 const https = require("https");
 
-
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const getRandomUserAgent = () => {
@@ -76,8 +75,8 @@ const API_WALLET = async (voucherCode, mobileNumber) => {
 
     if (response.status === 403 || response.status === 429) {
       console.warn("Rate limited or blocked. Retrying after delay...");
-      await delay(5000); // 5 second delay
-      return await API_WALLET(voucherCode, mobileNumber); // Retry once
+      await delay(5000);
+      return await API_WALLET(voucherCode, mobileNumber);
     }
 
     console.warn("Unexpected response", {
@@ -127,6 +126,7 @@ const validateRequest = (body) => {
   return null;
 };
 
+// Vercel serverless function handler
 module.exports = async (req, res) => {
   // Set CORS headers
   res.setHeader("Access-Control-Allow-Credentials", true);
@@ -137,22 +137,40 @@ module.exports = async (req, res) => {
     "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
   );
 
+  // Handle preflight request
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
+  // Root path handler
+  if (req.method === "GET" && (req.url === "/" || req.url === "")) {
+    return res.status(200).json({
+      status: {
+        message: "TrueMoney API is running",
+        code: "OK",
+      },
+      endpoints: {
+        health: "/health",
+        redeem: "/api/redeem",
+      },
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   // Health check endpoint
-  if (req.method === "GET") {
+  if (req.method === "GET" && req.url === "/health") {
     return res.status(200).json({
       status: {
         message: "Online",
         code: "OK",
       },
       timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
     });
   }
 
-  if (req.method === "POST") {
+  // Handle voucher redemption
+  if (req.method === "POST" && req.url === "/api/redeem") {
     const validationError = validateRequest(req.body);
     if (validationError) {
       return res.status(400).json({
@@ -178,11 +196,11 @@ module.exports = async (req, res) => {
     }
   }
 
-  // Handle unsupported methods
-  return res.status(405).json({
+  // Handle 404 for unknown routes
+  return res.status(404).json({
     status: {
-      message: "Method not allowed",
-      code: "METHOD_NOT_ALLOWED",
+      message: "Endpoint not found",
+      code: "NOT_FOUND",
     },
   });
 };

@@ -2,20 +2,22 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index.js",
+      "src": "api/*.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/api/redeem",
-      "methods": ["POST"],
-      "dest": "api/index.js"
+      "src": "/",
+      "dest": "/api/index.js"
     },
     {
-      "src": "/api",
-      "methods": ["GET"],
-      "dest": "api/index.js"
+      "src": "/health",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/api/redeem",
+      "dest": "/api/index.js"
     }
   ]
 }
