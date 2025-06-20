@@ -81,73 +81,81 @@ async function redeemVoucher(voucherCode, mobileNumber) {
 }
 
 async function vercelHandler(req, res) {
-  res.setHeader("Access-Control-Allow-Credentials", true);
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,POST");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
-  );
+  try {
+    res.setHeader("Access-Control-Allow-Credentials", true);
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,POST");
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
+    );
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+    if (req.method === "OPTIONS") {
+      return res.status(200).end();
+    }
 
-  if (req.method === "GET" && (req.url === "/" || req.url === "")) {
-    return res.status(200).json({
-      status: {
-        message: "TrueMoney API is running",
-        code: "OK",
-      },
-      endpoints: {
-        health: "/health",
-        redeem: "/api/redeem",
-      },
-      timestamp: new Date().toISOString(),
-    });
-  }
-
-  if (req.method === "GET" && req.url === "/health") {
-    return res.status(200).json({
-      status: {
-        message: "Online",
-        code: "OK",
-      },
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-    });
-  }
-
-  if (req.method === "POST" && req.url === "/api/redeem") {
-    const { voucherCode, mobileNumber } = req.body;
-    if (!voucherCode || !mobileNumber) {
-      return res.status(400).json({
+    if (req.method === "GET" && (req.url === "/" || req.url === "")) {
+      return res.status(200).json({
         status: {
-          message: "voucherCode and mobileNumber are required",
-          code: "VALIDATION_ERROR",
+          message: "TrueMoney API is running",
+          code: "OK",
         },
+        endpoints: {
+          health: "/health",
+          redeem: "/api/redeem",
+        },
+        timestamp: new Date().toISOString(),
       });
     }
-    try {
-      const result = await redeemVoucher(voucherCode, mobileNumber);
-      return res.status(200).json(result);
-    } catch (error) {
-      return res.status(500).json({
+
+    if (req.method === "GET" && req.url === "/health") {
+      return res.status(200).json({
         status: {
-          message: "Internal server error",
-          code: "INTERNAL_ERROR",
+          message: "Online",
+          code: "OK",
         },
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
       });
     }
-  }
 
-  return res.status(404).json({
-    status: {
-      message: "Not found",
-      code: "NOT_FOUND",
-    },
-  });
+    if (req.method === "POST" && req.url === "/api/redeem") {
+      const { voucherCode, mobileNumber } = req.body;
+      if (!voucherCode || !mobileNumber) {
+        return res.status(400).json({
+          status: {
+            message: "voucherCode and mobileNumber are required",
+            code: "VALIDATION_ERROR",
+          },
+        });
+      }
+      try {
+        const result = await redeemVoucher(voucherCode, mobileNumber);
+        return res.status(200).json(result);
+      } catch (error) {
+        console.error("RedeemVoucher Error:", error);
+        return res.status(500).json({
+          status: {
+            message: "Internal server error",
+            code: "INTERNAL_ERROR",
+          },
+        });
+      }
+    }
+
+    return res.status(404).json({
+      status: {
+        message: "Not found",
+        code: "NOT_FOUND",
+      },
+    });
+  } catch (err) {
+    console.error('Vercel Handler Error:', err);
+    res.status(500).json({ status: { message: 'Internal server error', code: 'INTERNAL_ERROR' } });
+  }
 }
 
-module.exports = redeemVoucher;
-module.exports.vercelHandler = vercelHandler;
+// Export for Vercel: ONLY the handler as default
+module.exports = vercelHandler;
+// Attach redeemVoucher for local/Express use
+module.exports.redeemVoucher = redeemVoucher;
