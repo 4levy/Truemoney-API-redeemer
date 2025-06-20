@@ -14,7 +14,7 @@ const getRandomUserAgent = () => {
   return userAgents[Math.floor(Math.random() * userAgents.length)];
 };
 
-const API_WALLET = async (voucherCode, mobileNumber) => {
+async function redeemVoucher(voucherCode, mobileNumber) {
   const voucherId = voucherCode.replace(
     "https://gift.truemoney.com/campaign/?v=",
     ""
@@ -58,77 +58,29 @@ const API_WALLET = async (voucherCode, mobileNumber) => {
 
   try {
     const response = await axios(requestConfig);
-    console.log("TrueMoney API Response:", response.data);
-
     if (response.data?.status?.code === "SUCCESS") {
-      console.log("Successful voucher redemption", {
-        voucherId,
-        mobileNumber,
-        amount: response.data?.data?.my_ticket?.amount_baht,
-      });
-
       return {
         status: response.data.status,
         data: response.data.data,
       };
     }
-
     if (response.status === 403 || response.status === 429) {
-      console.warn("Rate limited or blocked. Retrying after delay...");
       await delay(5000);
-      return await API_WALLET(voucherCode, mobileNumber);
+      return await redeemVoucher(voucherCode, mobileNumber);
     }
-
-    console.warn("Unexpected response", {
-      voucherId,
-      statusCode: response.data?.status?.code,
-    });
     return response.data;
   } catch (error) {
-    console.error("Error redeeming voucher", {
-      voucherId,
-      mobileNumber,
-      errorCode: error.response?.data?.status?.code,
-      error: error.message,
-    });
-
     const errorResponse = error.response?.data || {
       status: {
         message: error.message,
         code: "INTERNAL_ERROR",
       },
     };
-
     return errorResponse;
   }
-};
+}
 
-const validateRequest = (body) => {
-  if (!body || typeof body !== "object") {
-    return "Invalid request body";
-  }
-  if (!body.voucherCode) {
-    return "Voucher code is required";
-  }
-  if (
-    !body.voucherCode.match(
-      /^https:\/\/gift\.truemoney\.com\/campaign\/\?v=.+$/
-    )
-  ) {
-    return "Invalid voucher URL format";
-  }
-  if (!body.mobileNumber) {
-    return "Mobile number is required";
-  }
-  if (!body.mobileNumber.match(/^0[0-9]{9}$/)) {
-    return "Invalid Thai mobile number format";
-  }
-  return null;
-};
-
-// Vercel serverless function handler
-module.exports = async (req, res) => {
-  // Set CORS headers
+async function vercelHandler(req, res) {
   res.setHeader("Access-Control-Allow-Credentials", true);
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,POST");
@@ -137,12 +89,10 @@ module.exports = async (req, res) => {
     "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
   );
 
-  // Handle preflight request
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  // Root path handler
   if (req.method === "GET" && (req.url === "/" || req.url === "")) {
     return res.status(200).json({
       status: {
@@ -157,7 +107,6 @@ module.exports = async (req, res) => {
     });
   }
 
-  // Health check endpoint
   if (req.method === "GET" && req.url === "/health") {
     return res.status(200).json({
       status: {
@@ -169,24 +118,20 @@ module.exports = async (req, res) => {
     });
   }
 
-  // Handle voucher redemption
   if (req.method === "POST" && req.url === "/api/redeem") {
-    const validationError = validateRequest(req.body);
-    if (validationError) {
+    const { voucherCode, mobileNumber } = req.body;
+    if (!voucherCode || !mobileNumber) {
       return res.status(400).json({
         status: {
-          message: validationError,
+          message: "voucherCode and mobileNumber are required",
           code: "VALIDATION_ERROR",
         },
       });
     }
-
     try {
-      const { voucherCode, mobileNumber } = req.body;
-      const result = await API_WALLET(voucherCode, mobileNumber);
+      const result = await redeemVoucher(voucherCode, mobileNumber);
       return res.status(200).json(result);
     } catch (error) {
-      console.error("API Error:", error);
       return res.status(500).json({
         status: {
           message: "Internal server error",
@@ -196,11 +141,13 @@ module.exports = async (req, res) => {
     }
   }
 
-  // Handle 404 for unknown routes
   return res.status(404).json({
     status: {
-      message: "Endpoint not found",
+      message: "Not found",
       code: "NOT_FOUND",
     },
   });
-};
+}
+
+module.exports = redeemVoucher;
+module.exports.vercelHandler = vercelHandler;

@@ -1,10 +1,8 @@
 const Joi = require('joi');
 
 const redeemSchema = Joi.object({
-  // Define your expected fields here. Example:
   code: Joi.string().required(),
   amount: Joi.number().min(1).required(),
-  // Add more fields as needed
 });
 
 function validateRedeem(req, res, next) {
