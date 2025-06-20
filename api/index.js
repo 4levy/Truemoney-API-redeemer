@@ -126,6 +126,7 @@ const validateRequest = (body) => {
   return null;
 };
 
+// Vercel serverless function handler
 module.exports = async (req, res) => {
   // Set CORS headers
   res.setHeader("Access-Control-Allow-Credentials", true);
@@ -136,13 +137,16 @@ module.exports = async (req, res) => {
     "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
   );
 
+  // Handle preflight request
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
+  // Root path handler
   if (req.method === "GET" && (req.url === "/" || req.url === "")) {
     return res.status(200).json({
       status: {
+        message: "TrueMoney API is running",
         code: "OK",
       },
       endpoints: {

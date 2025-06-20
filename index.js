@@ -3,11 +3,14 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
+const moment = require('moment-timezone');
 
 const app = express();
 const port = 3000;
 
 const apiHandler = require("./api/index.js");
+const apiRedeemRouter = require('./routes/redeem');
+const { errorHandler } = require('./middleware/errorHandler');
 
 app.use(helmet());
 app.use(cors());
@@ -25,38 +28,20 @@ const limiter = rateLimit({
 
 app.use("/api/", limiter);
 
-app.use("/api/redeem", async (req, res) => {
-  if (req.method !== "POST") {
-    return res.status(405).json({
-      status: {
-        message: "Method not allowed",
-        code: "METHOD_NOT_ALLOWED",
-      },
-    });
-  }
-
-  try {
-    const result = await apiHandler(req, res);
-    return result;
-  } catch (error) {
-    console.error("API Error:", error);
-    return res.status(500).json({
-      status: {
-        message: "Internal server error",
-        code: "INTERNAL_ERROR",
-      },
-    });
-  }
-});
+app.use('/api/redeem', apiRedeemRouter);
 
 app.get("/health", (req, res) => {
+  const now = new Date();
+  const uptimeSeconds = process.uptime();
+  const readableUptime = moment.duration(uptimeSeconds, 'seconds').humanize();
   res.json({
     status: {
       message: "Online",
       code: "OK",
     },
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
+    timestamp: moment(now).tz('Asia/Bangkok').format('YYYY-MM-DD HH:mm:ss'),
+    uptime: uptimeSeconds,
+    readableUptime,
   });
 });
 
@@ -69,24 +54,12 @@ app.use((req, res) => {
   });
 });
 
-app.use((err, req, res, next) => {
-  console.error("Unhandled error:", err);
-  res.status(500).json({
-    status: {
-      message: "Internal server error",
-      code: "INTERNAL_ERROR",
-    },
-    error: process.env.NODE_ENV === "development" ? err.message : undefined,
-  });
-});
+app.use(errorHandler);
 
 if (require.main === module) {
   app.listen(port, () => {
     console.log(`
 Server is running
-- Local: http://localhost:${port}
-- API Endpoint: http://localhost:${port}/api/redeem
-- Health Check: http://localhost:${port}/health
         `);
   });
 }
