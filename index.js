@@ -8,7 +8,6 @@ const moment = require('moment-timezone');
 const app = express();
 const port = 3000;
 
-const apiHandler = require("./api/index.js");
 const apiRedeemRouter = require('./routes/redeem');
 const { errorHandler } = require('./middleware/errorHandler');
 

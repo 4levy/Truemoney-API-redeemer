@@ -1,5 +1,6 @@
 const axios = require("axios");
 const https = require("https");
+const moment = require("moment-timezone");
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -104,7 +105,7 @@ async function vercelHandler(req, res) {
           health: "/health",
           redeem: "/api/redeem",
         },
-        timestamp: new Date().toISOString(),
+        timestamp: moment().tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss"),
       });
     }
 
@@ -114,7 +115,7 @@ async function vercelHandler(req, res) {
           message: "Online",
           code: "OK",
         },
-        timestamp: new Date().toISOString(),
+        timestamp: moment().tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss"),
         uptime: process.uptime(),
       });
     }
@@ -150,12 +151,12 @@ async function vercelHandler(req, res) {
       },
     });
   } catch (err) {
-    console.error('Vercel Handler Error:', err);
-    res.status(500).json({ status: { message: 'Internal server error', code: 'INTERNAL_ERROR' } });
+    console.error("Vercel Handler Error:", err);
+    res.status(500).json({
+      status: { message: "Internal server error", code: "INTERNAL_ERROR" },
+    });
   }
 }
 
-// Export for Vercel: ONLY the handler as default
 module.exports = vercelHandler;
-// Attach redeemVoucher for local/Express use
 module.exports.redeemVoucher = redeemVoucher;
