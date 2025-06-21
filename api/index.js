@@ -98,7 +98,6 @@ async function vercelHandler(req, res) {
     if (req.method === "GET" && (req.url === "/" || req.url === "")) {
       return res.status(200).json({
         status: {
-          message: "TrueMoney API is running",
           code: "OK",
         },
         endpoints: {
