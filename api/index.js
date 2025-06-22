@@ -96,16 +96,9 @@ async function vercelHandler(req, res) {
     }
 
     if (req.method === "GET" && (req.url === "/" || req.url === "")) {
-      return res.status(200).json({
-        status: {
-          code: "OK",
-        },
-        endpoints: {
-          health: "/health",
-          redeem: "/api/redeem",
-        },
-        timestamp: moment().tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss"),
-      });
+      // Redirect to your desired URL
+      res.writeHead(302, { Location: "https://github.com/4levy" });
+      return res.end();
     }
 
     if (req.method === "GET" && req.url === "/health") {
