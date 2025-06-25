@@ -34,41 +34,6 @@ app.get("/", (req, res) => {
   res.redirect("https://github.com/4levy");
 });
 
-app.get("/health", (req, res) => {
-  const now = new Date();
-  const uptimeSeconds = process.uptime();
-  const readableUptime = moment.duration(uptimeSeconds, "seconds").humanize();
-  const memoryUsage = process.memoryUsage();
-  const totalMemMB = (os.totalmem() / 1024 / 1024).toFixed(2);
-  const usedMemMB = (memoryUsage.rss / 1024 / 1024).toFixed(2);
-
-  res.json({
-    status: {
-      message: "Online",
-      code: "OK",
-    },
-    timestamp: moment(now).tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss"),
-    uptime: {
-      seconds: uptimeSeconds.toFixed(0),
-      human: readableUptime,
-    },
-    system: {
-      platform: os.platform(),
-      arch: os.arch(),
-      cpu_cores: os.cpus().length,
-      memory: {
-        total_mb: totalMemMB,
-        used_mb: usedMemMB,
-      },
-      load_avg: os.loadavg(),
-    },
-    process: {
-      node_version: process.version,
-      pid: process.pid,
-    },
-  });
-});
-
 app.use((req, res) => {
   res.status(404).json({
     status: {

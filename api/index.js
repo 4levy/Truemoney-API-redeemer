@@ -1,5 +1,6 @@
 const axios = require("axios");
 const https = require("https");
+const os = require("os");
 const moment = require("moment-timezone");
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -16,19 +17,14 @@ const getRandomUserAgent = () => {
 };
 
 async function redeemVoucher(voucherCode, mobileNumber) {
-  const voucherId = voucherCode.replace(
-    "https://gift.truemoney.com/campaign/?v=",
-    ""
-  );
+  const voucherId = voucherCode.replace("https://gift.truemoney.com/campaign/?v=", "");
 
   await delay(Math.floor(Math.random() * 2000) + 1000);
 
   const requestConfig = {
     method: "post",
     url: `https://gift.truemoney.com/campaign/vouchers/${voucherId}/redeem`,
-    data: {
-      mobile: mobileNumber,
-    },
+    data: { mobile: mobileNumber },
     headers: {
       "User-Agent": getRandomUserAgent(),
       Accept: "application/json, text/plain, */*",
@@ -37,8 +33,7 @@ async function redeemVoucher(voucherCode, mobileNumber) {
       "Content-Type": "application/json",
       Origin: "https://gift.truemoney.com",
       Referer: "https://gift.truemoney.com/campaign",
-      "Sec-Ch-Ua":
-        '"Not.A/Brand";v="8", "Chromium";v="114", "Google Chrome";v="114"',
+      "Sec-Ch-Ua": '"Not.A/Brand";v="8", "Chromium";v="114", "Google Chrome";v="114"',
       "Sec-Ch-Ua-Mobile": "?0",
       "Sec-Ch-Ua-Platform": '"Windows"',
       "Sec-Fetch-Dest": "empty",
@@ -52,18 +47,13 @@ async function redeemVoucher(voucherCode, mobileNumber) {
     }),
     maxRedirects: 5,
     timeout: 10000,
-    validateStatus: function (status) {
-      return status >= 200 && status < 500;
-    },
+    validateStatus: (status) => status >= 200 && status < 500,
   };
 
   try {
     const response = await axios(requestConfig);
     if (response.data?.status?.code === "SUCCESS") {
-      return {
-        status: response.data.status,
-        data: response.data.data,
-      };
+      return { status: response.data.status, data: response.data.data };
     }
     if (response.status === 403 || response.status === 429) {
       await delay(5000);
@@ -71,13 +61,9 @@ async function redeemVoucher(voucherCode, mobileNumber) {
     }
     return response.data;
   } catch (error) {
-    const errorResponse = error.response?.data || {
-      status: {
-        message: error.message,
-        code: "INTERNAL_ERROR",
-      },
+    return error.response?.data || {
+      status: { message: error.message, code: "INTERNAL_ERROR" },
     };
-    return errorResponse;
   }
 }
 
@@ -91,29 +77,47 @@ async function vercelHandler(req, res) {
       "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
     );
 
-    if (req.method === "OPTIONS") {
-      return res.status(200).end();
-    }
+    if (req.method === "OPTIONS") return res.status(200).end();
 
     if (req.method === "GET" && (req.url === "/" || req.url === "")) {
-      // Redirect to your desired URL
       res.writeHead(302, { Location: "https://github.com/4levy" });
       return res.end();
     }
 
     if (req.method === "GET" && req.url === "/health") {
+      const uptimeSeconds = process.uptime();
+      const uptimeHuman = new Date(uptimeSeconds * 1000).toISOString().substr(11, 8);
+
+      const memoryUsage = process.memoryUsage();
+      const totalMemMB = (os.totalmem() / 1024 / 1024).toFixed(2);
+      const usedMemMB = (memoryUsage.rss / 1024 / 1024).toFixed(2);
+
       return res.status(200).json({
-        status: {
-          message: "Online",
-          code: "OK",
-        },
+        status: { message: "Online", code: "OK" },
         timestamp: moment().tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss"),
-        uptime: process.uptime(),
+        uptime: {
+          seconds: uptimeSeconds.toFixed(0),
+          human: uptimeHuman,
+        },
+        system: {
+          platform: os.platform(),
+          arch: os.arch(),
+          cpu_cores: os.cpus().length,
+          memory: {
+            total_mb: totalMemMB,
+            used_mb: usedMemMB,
+          },
+          load_avg: os.loadavg(),
+        },
+        process: {
+          node_version: process.version,
+          pid: process.pid,
+        },
       });
     }
 
     if (req.method === "POST" && req.url === "/api/redeem") {
-      const { voucherCode, mobileNumber } = req.body;
+      const { voucherCode, mobileNumber } = req.body || {};
       if (!voucherCode || !mobileNumber) {
         return res.status(400).json({
           status: {
@@ -122,25 +126,13 @@ async function vercelHandler(req, res) {
           },
         });
       }
-      try {
-        const result = await redeemVoucher(voucherCode, mobileNumber);
-        return res.status(200).json(result);
-      } catch (error) {
-        console.error("RedeemVoucher Error:", error);
-        return res.status(500).json({
-          status: {
-            message: "Internal server error",
-            code: "INTERNAL_ERROR",
-          },
-        });
-      }
+
+      const result = await redeemVoucher(voucherCode, mobileNumber);
+      return res.status(200).json(result);
     }
 
     return res.status(404).json({
-      status: {
-        message: "Not found",
-        code: "NOT_FOUND",
-      },
+      status: { message: "Not found", code: "NOT_FOUND" },
     });
   } catch (err) {
     console.error("Vercel Handler Error:", err);
