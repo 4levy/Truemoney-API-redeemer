@@ -5,15 +5,35 @@ const moment = require("moment-timezone");
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+let cachedUserAgents = [];
+
+const loadUserAgents = async () => {
+  try {
+    const response = await axios.get(
+      "https://gist.githubusercontent.com/pzb/b4b6f57144aea7827ae4/raw/cf847b76a142955b1410c8bcef3aabe221a63db1/user-agents.txt"
+    );
+    cachedUserAgents = response.data
+      .split("\n")
+      .map((ua) => ua.trim())
+      .filter((ua) => ua.length > 0);
+    console.log(`[INFO] Loaded ${cachedUserAgents.length} user agents.`);
+  } catch (err) {
+    console.error("[ERROR] Failed to load user agents. Using fallback list.", err);
+    cachedUserAgents = [
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.67",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/114.0",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1",
+    ];
+  }
+};
+
 const getRandomUserAgent = () => {
-  const userAgents = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.67",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/114.0",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1",
-  ];
-  return userAgents[Math.floor(Math.random() * userAgents.length)];
+  if (cachedUserAgents.length === 0) {
+    return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36";
+  }
+  return cachedUserAgents[Math.floor(Math.random() * cachedUserAgents.length)];
 };
 
 async function redeemVoucher(voucherCode, mobileNumber) {
@@ -141,6 +161,8 @@ async function vercelHandler(req, res) {
     });
   }
 }
+
+loadUserAgents();
 
 module.exports = vercelHandler;
 module.exports.redeemVoucher = redeemVoucher;
